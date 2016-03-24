@@ -122,27 +122,29 @@ define('paver', [], function () {
                         return score / row.range.len;
                     }
 
-                    for (var i = from; i < count; i++) {
-                        var data = this.dataSource && (this.dataSource.get ? this.dataSource.get(i) : this.dataSource[i]) || false;
-                        var ratio;
+                    for (var i = from; i <= count; i++) {
+                        if (i < count) {
+                            var data = this.dataSource && (this.dataSource.get ? this.dataSource.get(i) : this.dataSource[i]) || false;
+                            var ratio;
 
-                        if (this.getRatio) {
-                            ratio = this.getRatio(data, i);
-                        } else {
-                            if (!data || !data.width || !data.height) {
-                                if (this.defaultSize) {
-                                    data = data || {};
-                                    data.width = this.defaultSize.width;
-                                    data.height = this.defaultSize.height;
-                                } else {
-                                    break;
+                            if (this.getRatio) {
+                                ratio = this.getRatio(data, i);
+                            } else {
+                                if (!data || !data.width || !data.height) {
+                                    if (this.defaultSize) {
+                                        data = data || {};
+                                        data.width = this.defaultSize.width;
+                                        data.height = this.defaultSize.height;
+                                    } else {
+                                        break;
+                                    }
                                 }
+
+                                ratio = data.width / data.height;
                             }
 
-                            ratio = data.width / data.height;
+                            ratio = Math.max(Math.min(ratio, maxRatio), minRatio);
                         }
-
-                        ratio = Math.max(Math.min(ratio, maxRatio), minRatio);
 
                         var h1000 = 1000 / ratio;
                         var sh1000 = stack.h1000 + h1000;
@@ -165,7 +167,8 @@ define('paver', [], function () {
                                 } else {
                                     var score = compute(row, i);
                                     if (!best || (score < bestScore)) {
-                                        best = row, bestScore = score;
+                                        best = row;
+                                        bestScore = score;
                                     }
 
                                     step++;
@@ -175,7 +178,8 @@ define('paver', [], function () {
 
                                         totalScore += score;
 
-                                        best = false, bestScore = 1000000;
+                                        best = false;
+                                        bestScore = 1000000;
                                         step = 0;
                                     } else {
                                         i = row.range.from;
@@ -206,10 +210,6 @@ define('paver', [], function () {
                     }
 
                     if (row.stacks.length > 0) {
-                        if (stack != undefined && stack.tiles.length > 0) {
-                            row.stacks.push(stack);
-                        }
-
                         row.height = Math.min(row.height, maxRowHeight);
                         totalScore += compute(row, count - 1);
                         rows.push(row);
@@ -223,80 +223,80 @@ define('paver', [], function () {
             };
 
             layout.render = options.render || function (element) {
-                    var e = element || document.createElement('div');
-                    e.style.position = 'relative';
+                var e = element || document.createElement('div');
+                e.style.position = 'relative';
 
-                    var node = e.firstChild;
-                    while (node) {
-                        node.paverDelete = true;
-                        node = node.nextSibling;
-                    }
+                var node = e.firstChild;
+                while (node) {
+                    node.paverDelete = true;
+                    node = node.nextSibling;
+                }
 
-                    var childs = [];
-                    var rowTop = 0;
-                    for (var i = 0; i < this.rows.length; i++) {
-                        var row = this.rows[i];
-                        var stackLeft = 0;
-                        for (var j = 0; j < row.stacks.length; j++) {
-                            var stack = row.stacks[j];
-                            var tileTop = 0;
-                            for (var k = 0; k < stack.tiles.length; k++) {
-                                var tile = stack.tiles[k];
-                                var child = tile.element || this.renderTile(tile, {
-                                        row: i,
-                                        stack: j,
-                                        tile: k
-                                    }, rowTop + tileTop);
+                var childs = [];
+                var rowTop = 0;
+                for (var i = 0; i < this.rows.length; i++) {
+                    var row = this.rows[i];
+                    var stackLeft = 0;
+                    for (var j = 0; j < row.stacks.length; j++) {
+                        var stack = row.stacks[j];
+                        var tileTop = 0;
+                        for (var k = 0; k < stack.tiles.length; k++) {
+                            var tile = stack.tiles[k];
+                            var child = tile.element || this.renderTile(tile, {
+                                    row: i,
+                                    stack: j,
+                                    tile: k
+                                }, rowTop + tileTop);
 
-                                child.style.position = 'absolute';
-                                child.style.top = (rowTop + tileTop) + 'px';
-                                child.style.left = stackLeft + 'px';
-                                child.style.width = tile.width + 'px';
-                                child.style.height = tile.height + 'px';
+                            child.style.position = 'absolute';
+                            child.style.top = (rowTop + tileTop) + 'px';
+                            child.style.left = stackLeft + 'px';
+                            child.style.width = tile.width + 'px';
+                            child.style.height = tile.height + 'px';
 
-                                if (child.parentNode != e) {
-                                    childs.push(child);
-                                } else {
-                                    child.paverDelete = false;
-                                }
-
-                                tileTop += tile.height + this.margin;
+                            if (child.parentNode != e) {
+                                childs.push(child);
+                            } else {
+                                child.paverDelete = false;
                             }
-                            stackLeft += stack.width + this.margin;
+
+                            tileTop += tile.height + this.margin;
                         }
-                        rowTop += row.height + this.margin;
+                        stackLeft += stack.width + this.margin;
                     }
+                    rowTop += row.height + this.margin;
+                }
 
-                    var node = e.firstChild;
-                    while (node) {
-                        var next = node.nextSibling;
-                        if (node.paverDelete) {
-                            e.removeChild(node);
-                        }
-                        delete node.paverDelete;
-                        node = next;
+                var node = e.firstChild;
+                while (node) {
+                    var next = node.nextSibling;
+                    if (node.paverDelete) {
+                        e.removeChild(node);
                     }
+                    delete node.paverDelete;
+                    node = next;
+                }
 
-                    for (var i = 0; i < childs.length; i++) {
-                        e.appendChild(childs[i]);
-                    }
+                for (var i = 0; i < childs.length; i++) {
+                    e.appendChild(childs[i]);
+                }
 
-                    return e;
-                };
+                return e;
+            };
 
             layout.renderTile = options.renderTile || function (tile, path) {
-                    var e = tile.element = document.createElement('div');
+                var e = tile.element = document.createElement('div');
 
-                    e.style.width = tile.width + 'px';
-                    e.style.height = tile.height + 'px';
+                e.style.width = tile.width + 'px';
+                e.style.height = tile.height + 'px';
 
-                    e.style.backgroundImage = 'url(' + tile.data.src + ')';
-                    e.style.backgroundSize = 'cover';
-                    e.style.backgroundRepeat = 'no-repeat';
-                    e.style.backgroundPosition = 'center center';
+                e.style.backgroundImage = 'url(' + tile.data.src + ')';
+                e.style.backgroundSize = 'cover';
+                e.style.backgroundRepeat = 'no-repeat';
+                e.style.backgroundPosition = 'center center';
 
-                    return e;
-                };
+                return e;
+            };
 
             return layout.rebuild();
         }
